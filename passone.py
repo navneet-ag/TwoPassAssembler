@@ -1,9 +1,15 @@
+#Contributors:
+#Navneet Agarwal 
+#2018348
+#Sarthak Arora
+#2018307
+
+
 import re
 
 def StringToList(Data):
 	MyList=list(Data.split(' '))
 	data=re.sub('\n', '', MyList[-1]) #for removing /n from operand
-
 	MyList=MyList[0:len(MyList)-1]+[data]
 	
 	TemporaryList=[]
@@ -21,7 +27,6 @@ def StringToList(Data):
 		TemporaryList=[data]+TemporaryList[1:]
 	return (TemporaryList)
 
-
 def CheckForOptable(Opcode):
 	OptableFile=open("optable.txt","r")
 	for data in OptableFile:
@@ -30,7 +35,7 @@ def CheckForOptable(Opcode):
 
 		if(OpCodeInFile==Opcode):
 			OptableFile.close()
-			return(int(oplist[0]))
+			return(1)
 	OptableFile.close()
 	return(-1)
 
@@ -95,105 +100,134 @@ def AssignMemoryAddressToVariables(LocationCounter):
 		if(len(symbollist)==1):
 			# print(value)
 			string2=string2+symbollist[0]+" "+str(LocationCounter)+'\n'
-			LocationCounter+=12
+			LocationCounter+=1
+			if(LocationCounter>4096):
+					print("Memory limit exceeded")
+					
+					return(-1)
 		else:
 			string+=data
 	ReadSymboltableFile.close()
 	SymboltableFile=open("symboltable.txt","w")
 	SymboltableFile.write(string+string2)
 	SymboltableFile.close()
-	return(LocationCounter-12)
+	return(LocationCounter-1)
 
-
-InputFile=open("input.txt","r")
-SymboltableFile=open("symboltable.txt","w")
-SymboltableFile.close()
-IntermediateFile=open("Intermediate.txt","w")
-StartAddress=0
-LocationCounter=0
-LineNumber=0
-ExecutionSuccessful=False
-StopFoundStatus=False
-DivisionUsedFlag=False
-data=InputFile.readline()
-MyList=StringToList(data)
-
-# Error handle if no memory address with start
-
-if MyList[1]=="START":
-	StartAddress=int(MyList[2])
-	LocationCounter=StartAddress
-	LineToWrite=""
-	
-	for element in MyList[:-1]:
-		LineToWrite+=str(element)+" "
-	
-	LineToWrite+=MyList[-1]+'\n'
-	IntermediateFile.write(str(LineToWrite))
-else:
+def passone():
+	InputFile=open("input.txt","r")
+	SymboltableFile=open("symboltable.txt","w")
+	SymboltableFile.close()
+	IntermediateFile=open("Intermediate.txt","w")
+	StartAddress=0
 	LocationCounter=0
+	LineNumber=0
+	ExecutionSuccessful=False
+	StopFoundStatus=False
+	DivisionUsedFlag=False
+	data=InputFile.readline()
+	MyList=StringToList(data)
+	labellist=[]
 
 
-LineNumber=1
-try:
-	for data in InputFile:
-		MyList=StringToList(data)
-		LineToWrite=str(LocationCounter)+" "	
+	if MyList[1]=="START":
+		StartAddress=int(MyList[2])
+		LocationCounter=StartAddress
+		LineToWrite=""
+		
 		for element in MyList[:-1]:
 			LineToWrite+=str(element)+" "
-		LineToWrite+=MyList[-1]+'\n'
-
-		if(MyList[1]=="END"): # Handle if no end provided
-			ExecutionSuccessful=True
-			print("Program length : "+ str(LocationCounter-StartAddress))
-			IntermediateFile.write("  "+"END"+'\n')
-			break
-		else:
-			IntermediateFile.write(str(LineToWrite))
-
-		if(MyList[0]!=' '):
-			SymboltableFile=open("symboltable.txt","a")
-			WriteLabelInSymbolTab(MyList[0],LocationCounter)
-			SymboltableFile.close()
-
-		if(CheckForOptable(MyList[1])!=-1):
-			
-			if(MyList[1]=="DIV"):
-				DivisionUsedFlag=True
-				WriteinSymbolTable("R1")
-				WriteinSymbolTable("R2")
-
-			if(MyList[1]=="CLA"):
-				if (not((len(MyList)==2) or (len(MyList)==4 and MyList[2]==";"))):
-					print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
-					break
-			elif(MyList[1]=="STP" ):
 		
-				if (not((len(MyList)==2) or (len(MyList)==4 and MyList[2]==";"))):
-					print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
-					break
-				else:
-					StopFoundStatus=True
+		LineToWrite+=MyList[-1]+'\n'
+		IntermediateFile.write(str(LineToWrite))
+	else:
+		LocationCounter=0
+
+	LineNumber=1
+	try:
+		for data in InputFile:
+			MyList=StringToList(data)
+
+			LineToWrite=str(LocationCounter)+" "	
+			for element in MyList[:-1]:
+				if(element==" "):
+					element="-"
+				LineToWrite+=str(element)+" "
+			LineToWrite+=MyList[-1]+'\n'
+			# print(LineToWrite)
+			if(MyList[1]=="END"): # Handle if no end provided
+				ExecutionSuccessful=True
+				print("Program length : "+ str(LocationCounter-StartAddress))
+				IntermediateFile.write("  "+"END"+'\n')
+				break
 			else:
-				if((len(MyList)==3) or (len(MyList)==5 and MyList[3]==";")):
-					WriteinSymbolTable(MyList[2])
-					
+				IntermediateFile.write(str(LineToWrite))
+
+			if(MyList[0]!=' '):
+				SymboltableFile=open("symboltable.txt","a")
+				WriteLabelInSymbolTab(MyList[0],LocationCounter)
+				if(MyList[0] in labellist):
+					print("Error Label "+MyList[0]+" defined more than once")
+					return(-1)
 				else:
-					print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
-					break
+					labellist.append(MyList[0])
+				SymboltableFile.close()
 
-			LocationCounter+=12 # check value of add
-		else:
-			print("Error in line "+str(LineNumber+1) + ":Not a Legal Opcode") #Error 
-			break
+			if(CheckForOptable(MyList[1])!=-1):
+				
+				if(MyList[1]=="DIV"):
+					DivisionUsedFlag=True
+					WriteinSymbolTable("R1")
+					WriteinSymbolTable("R2")
 
-		LineNumber+=1
+				if(MyList[1]=="CLA"):
+					if (not((len(MyList)==2) or (len(MyList)==4 and MyList[2]==";"))):
+						print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
+						return(-1)
 
-		# print(MyList)
-		# print(LineToWrite)
-	LocationCounter= AssignMemoryAddressToVariables(LocationCounter)
+				elif(MyList[1]=="STP" ):
+			
+					if (not((len(MyList)==2) or (len(MyList)==4 and MyList[2]==";"))):
+						print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
+						return(-1)
 
-	if(ExecutionSuccessful):
-		print(LocationCounter)
-except IndexError:
-	print("Please remove empty line in between two instructions")
+						
+					else:
+						StopFoundStatus=True
+				else:
+					if((len(MyList)==3) or (len(MyList)==5 and MyList[3]==";")):
+						WriteinSymbolTable(MyList[2])
+						
+					else:
+						print("Error in line "+str(LineNumber+1) +" : Incorrect number of operands")
+						return(-1)
+						break
+
+				LocationCounter+=1 # check value of add
+				if(LocationCounter>4096):
+					print("Memory limit exceeded")
+					return(-1)
+			else:
+				print("Error in line "+str(LineNumber+1) + ":Not a Legal Opcode") #Error 
+				return(-1)
+
+
+				break
+
+			LineNumber+=1
+
+			# print(MyList)
+			# print(LineToWrite)
+		AssignMemoryAddressToVariables(LocationCounter)
+		if(not(StopFoundStatus)):
+			print("Error : No stop for stopping the execution")
+			return(-1)
+		if(not(ExecutionSuccessful)):
+			print("Error END statement missing")
+			return(-1)
+		return(0)		
+	except IndexError:
+
+		print("Please remove empty line in between two instructions")
+		return(-1)
+if __name__ == '__main__':
+	passone()
